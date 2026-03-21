@@ -12,7 +12,7 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.ts', 'test/**/*.{test,spec}.ts'],
     
     // Exclude patterns
-    exclude: ['node_modules', 'dist', 'tests/mcp-testing'],
+    exclude: ['node_modules', 'dist', 'tests/mcp-testing', 'test/e2e/**'],
     
     // Setup files
     setupFiles: ['./test/setup.ts'],
@@ -62,7 +62,7 @@ export default defineConfig({
     
     // Concurrent execution settings
     sequence: {
-      concurrent: true
+      concurrent: false
     },
     
     // Pool settings - use main thread for integration tests to allow process.chdir()

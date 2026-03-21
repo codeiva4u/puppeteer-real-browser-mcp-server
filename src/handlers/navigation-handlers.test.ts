@@ -12,18 +12,20 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { handleNavigate, handleWait } from './navigation-handlers.js';
 import { NavigateArgs, WaitArgs } from '../tool-definitions.js';
 
+const realSetTimeout = globalThis.setTimeout;
+
 // Mock all external dependencies
-vi.mock('../browser-manager', () => ({
+vi.mock('../browser-manager.js', () => ({
   getBrowserInstance: vi.fn(),
   getPageInstance: vi.fn()
 }));
 
-vi.mock('../system-utils', () => ({
+vi.mock('../system-utils.js', () => ({
   withErrorHandling: vi.fn((operation: () => Promise<any>, errorMessage: string) => operation()),
   withTimeout: vi.fn((operation: () => Promise<any>, timeout: number, context: string) => operation())
 }));
 
-vi.mock('../workflow-validation', () => ({
+vi.mock('../workflow-validation.js', () => ({
   validateWorkflow: vi.fn(),
   recordExecution: vi.fn(),
   workflowValidator: {
@@ -34,7 +36,7 @@ vi.mock('../workflow-validation', () => ({
 // Mock setTimeout globally - track delays without immediate execution for exponential backoff testing
 const setTimeoutMock = vi.fn((callback: (...args: any[]) => void, delay: number) => {
   // Store the delay for assertion while allowing async execution
-  setTimeout(() => {
+  realSetTimeout(() => {
     if (typeof callback === 'function') {
       callback();
     }
@@ -62,6 +64,9 @@ describe('Navigation Handlers', () => {
     mockBrowserManager = browserManager;
     mockSystemUtils = systemUtils;
     mockWorkflowValidation = workflowValidation;
+
+    mockSystemUtils.withErrorHandling.mockImplementation((operation: () => Promise<any>) => operation());
+    mockSystemUtils.withTimeout.mockImplementation((operation: () => Promise<any>) => operation());
 
     // Mock page instance with navigation methods
     mockPageInstance = {
@@ -94,7 +99,7 @@ describe('Navigation Handlers', () => {
         // Assert: Should navigate successfully
         expect(mockPageInstance.goto).toHaveBeenCalledWith(
           'https://example.com',
-          { waitUntil: 'networkidle2', timeout: 60000 }
+          { waitUntil: 'domcontentloaded', timeout: 60000 }
         );
         expect(mockWorkflowValidation.validateWorkflow).toHaveBeenCalledWith('navigate', args);
         expect(mockWorkflowValidation.recordExecution).toHaveBeenCalledWith('navigate', args, true);

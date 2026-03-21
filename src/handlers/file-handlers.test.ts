@@ -35,14 +35,11 @@ vi.mock('../token-management.js', () => ({
 
 // Mock TurndownService
 vi.mock('turndown', () => {
-  const mockInstance = {
-    turndown: vi.fn().mockReturnValue('# Mock Markdown\n\nContent converted to markdown.'),
-    addRule: vi.fn()
-  };
-  mockInstance.addRule.mockReturnValue(mockInstance);
-  
   return {
-    default: vi.fn().mockImplementation(() => mockInstance)
+    default: class MockTurndownService {
+      turndown = vi.fn().mockReturnValue('# Mock Markdown\n\nContent converted to markdown.');
+      addRule = vi.fn();
+    }
   };
 });
 

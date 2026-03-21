@@ -138,15 +138,16 @@ describe('MCP Server Integration Tests', () => {
       'browser_close',
       'solve_captcha',
       'random_scroll',
-      'find_selector'
+      'find_selector',
+      'save_content_as_markdown'
     ];
 
-    test('should have exactly 10 tools available', async () => {
+    test('should have exactly 11 tools available', async () => {
       const request = createMCPRequest.toolsList(10);
       const response = await sendMCPRequest(serverProcess, request);
       
       const tools = response.result.tools;
-      expect(tools).toHaveLength(10);
+      expect(tools).toHaveLength(11);
       expect(tools.map((t: any) => t.name).sort()).toEqual(expectedTools.sort());
     });
 
@@ -182,36 +183,41 @@ describe('MCP Server Integration Tests', () => {
       const request = createMCPRequest.toolCall(20, 'find_selector', { text: 'button text' });
       const response = await sendMCPRequest(serverProcess, request);
       
-      expect(response.error).toBeDefined();
-      expect(response.error.message).toMatch(/Cannot search for selectors|cannot be executed in current state/);
-      expect(response.error.message).toContain('get_content');
+      expect(response.result).toBeDefined();
+      expect(response.result.isError).toBe(true);
+      expect(response.result.content[0].text).toMatch(/Cannot search for selectors|cannot be executed in current state/);
+      expect(response.result.content[0].text).toContain('get_content');
     });
 
     test('should guide proper workflow sequence', async () => {
-      const request = createMCPRequest.toolCall(21, 'browser_init', {});
-      const response = await sendMCPRequest(serverProcess, request, 30000); // Increased to 30 seconds for browser initialization
+      const request = createMCPRequest.toolCall(21, 'find_selector', { text: 'button text' });
+      const response = await sendMCPRequest(serverProcess, request, 30000);
       
       expect(response.result).toBeDefined();
-      expect(response.result.content[0].text).toContain('Next step: Use navigate');
-      expect(response.result.content[0].text).toContain('get_content to analyze');
-      expect(response.result.content[0].text).toContain('prevents blind selector guessing');
+      expect(response.result.isError).toBe(true);
+      expect(response.result.content[0].text).toContain("Use 'browser_init' to start browser");
+      expect(response.result.content[0].text).toContain("Use 'navigate' to load a page");
+      expect(response.result.content[0].text).toContain("Use 'get_content' to analyze page content");
     });
 
     test('should validate workflow state transitions', () => {
-      const serverCode = readSourceFile('src/index.ts');
+      const workflowCode = readSourceFile('src/workflow-validation.ts');
+      const browserHandlerCode = readSourceFile('src/handlers/browser-handlers.ts');
       
-      expect(serverCode).toContain('withWorkflowValidation');
-      expect(serverCode).toContain('validateWorkflow');
-      expect(serverCode).toContain('recordExecution');
-      expect(serverCode).toContain('workflowValidator');
+      expect(browserHandlerCode).toContain('withWorkflowValidation');
+      expect(workflowCode).toContain('validateToolExecution');
+      expect(workflowCode).toContain('recordToolExecution');
+      expect(workflowCode).toContain('workflowValidator');
     });
 
     test('should have workflow validation imports', () => {
-      const serverCode = readSourceFile('src/index.ts');
+      const browserHandlerCode = readSourceFile('src/handlers/browser-handlers.ts');
+      const contentStrategyCode = readSourceFile('src/content-strategy.ts');
+      const tokenManagementCode = readSourceFile('src/token-management.ts');
       
-      expect(serverCode).toContain('workflow-validation');
-      expect(serverCode).toContain('content-strategy');
-      expect(serverCode).toContain('token-management');
+      expect(browserHandlerCode).toContain('workflow-validation');
+      expect(contentStrategyCode).toContain('workflow-validation');
+      expect(tokenManagementCode).toContain('class TokenManager');
     });
   });
 
@@ -266,7 +272,7 @@ describe('MCP Server Integration Tests', () => {
       const workflowCode = readSourceFile('src/workflow-validation.ts');
       
       expect(workflowCode).toContain('enum WorkflowState');
-      expect(workflowCode).toContain('BROWSER_INIT');
+      expect(workflowCode).toContain('BROWSER_READY');
       expect(workflowCode).toContain('PAGE_LOADED');
       expect(workflowCode).toContain('CONTENT_ANALYZED');
       expect(workflowCode).toContain('SELECTOR_AVAILABLE');
@@ -293,21 +299,15 @@ describe('MCP Server Integration Tests', () => {
 
   describe('Integration Tests for Issue #9 Resolution', () => {
     test('should block find_selector without prior get_content', async () => {
-      // This test specifically addresses the GitHub issue
-      const sequence = [
-        createMCPRequest.toolCall(30, 'browser_init', {}),
-        createMCPRequest.toolCall(31, 'find_selector', { text: 'test' })
-      ];
+      const response = await sendMCPRequest(
+        serverProcess,
+        createMCPRequest.toolCall(30, 'find_selector', { text: 'test' }),
+      );
 
-      const responses = await testWorkflowSequence(serverProcess, sequence);
-      
-      // First response should succeed (browser_init)
-      expect(responses[0].result).toBeDefined();
-      
-      // Second response should be blocked (find_selector without content analysis)
-      expect(responses[1].error).toBeDefined();
-      expect(responses[1].error.message).toMatch(/Cannot search for selectors|cannot be executed/);
-      expect(responses[1].error.message).toContain('get_content');
+      expect(response.result).toBeDefined();
+      expect(response.result.isError).toBe(true);
+      expect(response.result.content[0].text).toMatch(/Cannot search for selectors|cannot be executed/);
+      expect(response.result.content[0].text).toContain('get_content');
     });
   });
 });

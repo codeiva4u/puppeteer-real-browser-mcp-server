@@ -13,16 +13,16 @@ import { handleClick, handleType, handleSolveCaptcha, handleRandomScroll } from 
 import { ClickArgs, TypeArgs, SolveCaptchaArgs } from '../tool-definitions.js';
 
 // Mock all external dependencies
-vi.mock('../browser-manager', () => ({
+vi.mock('../browser-manager.js', () => ({
   getBrowserInstance: vi.fn(),
   getPageInstance: vi.fn()
 }));
 
-vi.mock('../system-utils', () => ({
+vi.mock('../system-utils.js', () => ({
   withErrorHandling: vi.fn((operation: () => Promise<any>, errorMessage: string) => operation())
 }));
 
-vi.mock('../workflow-validation', () => ({
+vi.mock('../workflow-validation.js', () => ({
   validateWorkflow: vi.fn(),
   recordExecution: vi.fn(),
   workflowValidator: {
@@ -30,14 +30,14 @@ vi.mock('../workflow-validation', () => ({
   }
 }));
 
-vi.mock('../self-healing-locators', () => ({
+vi.mock('../self-healing-locators.js', () => ({
   selfHealingLocators: {
     findElementWithFallbacks: vi.fn(),
     getFallbackSummary: vi.fn()
   }
 }));
 
-vi.mock('../stealth-actions', () => ({
+vi.mock('../stealth-actions.js', () => ({
   randomScroll: vi.fn()
 }));
 

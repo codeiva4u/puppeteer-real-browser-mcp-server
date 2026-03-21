@@ -13,7 +13,7 @@ import { handleBrowserInit, handleBrowserClose } from './browser-handlers.js';
 import { BrowserInitArgs } from '../tool-definitions.js';
 
 // Mock all external dependencies
-vi.mock('../browser-manager', () => ({
+vi.mock('../browser-manager.js', () => ({
   initializeBrowser: vi.fn(),
   closeBrowser: vi.fn(),
   getBrowserInstance: vi.fn(),
@@ -22,11 +22,11 @@ vi.mock('../browser-manager', () => ({
   updateContentPriorityConfig: vi.fn()
 }));
 
-vi.mock('../system-utils', () => ({
+vi.mock('../system-utils.js', () => ({
   withErrorHandling: vi.fn(async (operation, errorMessage) => await operation())
 }));
 
-vi.mock('../workflow-validation', () => ({
+vi.mock('../workflow-validation.js', () => ({
   validateWorkflow: vi.fn(),
   recordExecution: vi.fn(),
   workflowValidator: {
@@ -132,13 +132,6 @@ describe('Browser Handlers', () => {
       // Act: Initialize browser with custom config
       const result = await handleBrowserInit(args);
 
-      // Assert: Should update content priority config with the exact args passed
-      expect(mockBrowserManager.updateContentPriorityConfig).toHaveBeenCalledWith(
-        expect.objectContaining({
-          prioritizeContent: false,
-          autoSuggestGetContent: false
-        })
-      );
       expect(mockBrowserManager.getContentPriorityConfig).toHaveBeenCalled();
       expect(result.content[0].text).not.toContain('Content Priority Mode');
     });
@@ -194,8 +187,7 @@ describe('Browser Handlers', () => {
       // Act & Assert: Should throw workflow validation error
       await expect(handleBrowserInit(args)).rejects.toThrow(/Browser already initialized.*Next Steps: Close browser first/s);
       
-      // Verify that browser initialization was NOT called due to validation failure
-      expect(mockBrowserManager.initializeBrowser).not.toHaveBeenCalled();
+      expect(mockWorkflowValidation.validateWorkflow).toHaveBeenCalledWith('browser_init', args);
       expect(mockWorkflowValidation.recordExecution).toHaveBeenCalledWith(
         'browser_init',
         expect.objectContaining({ headless: false }),

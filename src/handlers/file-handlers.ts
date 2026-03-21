@@ -54,36 +54,38 @@ function createTurndownService(formatOptions: SaveContentAsMarkdownArgs['formatO
     preformattedCode: false
   });
 
-  // Customize table handling
-  turndownService.addRule('table', {
-    filter: 'table',
-    replacement: function(content) {
-      return '\n\n' + content + '\n\n';
-    }
-  });
-
-  // Improve list handling
-  turndownService.addRule('listItem', {
-    filter: 'li',
-    replacement: function(content, node, options) {
-      content = content
-        .replace(/^\n+/, '') // remove leading newlines
-        .replace(/\n+$/, '\n') // replace trailing newlines with just one
-        .replace(/\n/gm, '\n    '); // indent
-
-      const prefix = options.bulletListMarker + ' ';
-      return prefix + content + (node.nextSibling && !/\n$/.test(content) ? '\n' : '');
-    }
-  });
-
-  // Handle links based on preserveLinks option
-  if (!preserveLinks) {
-    turndownService.addRule('stripLinks', {
-      filter: 'a',
+  if (typeof (turndownService as Partial<TurndownService>).addRule === 'function') {
+    // Customize table handling
+    turndownService.addRule('table', {
+      filter: 'table',
       replacement: function(content) {
-        return content;
+        return '\n\n' + content + '\n\n';
       }
     });
+
+    // Improve list handling
+    turndownService.addRule('listItem', {
+      filter: 'li',
+      replacement: function(content, node, options) {
+        content = content
+          .replace(/^\n+/, '') // remove leading newlines
+          .replace(/\n+$/, '\n') // replace trailing newlines with just one
+          .replace(/\n/gm, '\n    '); // indent
+
+        const prefix = options.bulletListMarker + ' ';
+        return prefix + content + (node.nextSibling && !/\n$/.test(content) ? '\n' : '');
+      }
+    });
+
+    // Handle links based on preserveLinks option
+    if (!preserveLinks) {
+      turndownService.addRule('stripLinks', {
+        filter: 'a',
+        replacement: function(content) {
+          return content;
+        }
+      });
+    }
   }
 
   return turndownService;

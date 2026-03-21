@@ -19,12 +19,20 @@ export interface MCPRequest {
   params: any;
 }
 
+const startupWaiters = new WeakMap<ChildProcess, Promise<void>>();
+
 /**
  * Wait for server to start up by monitoring stderr output
  */
 export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: number = 10000): Promise<void> {
-  return new Promise((resolve, reject) => {
+  const existingWaiter = startupWaiters.get(serverProcess);
+  if (existingWaiter) {
+    return existingWaiter;
+  }
+
+  const startupPromise = new Promise<void>((resolve, reject) => {
     const timeout = setTimeout(() => {
+      startupWaiters.delete(serverProcess);
       reject(new Error(`Server did not start within ${timeoutMs}ms`));
     }, timeoutMs);
 
@@ -36,6 +44,9 @@ export function waitForServerStartup(serverProcess: ChildProcess, timeoutMs: num
       }
     });
   });
+
+  startupWaiters.set(serverProcess, startupPromise);
+  return startupPromise;
 }
 
 /**
@@ -77,7 +88,7 @@ export function sendMCPRequest(
     serverProcess.stdout?.on('data', dataHandler);
 
     // Wait for server to be ready, then send the request
-    waitForServerStartup(serverProcess).then(() => {
+    waitForServerStartup(serverProcess, timeoutMs).then(() => {
       serverProcess.stdin?.write(message);
     }).catch(reject);
   });
